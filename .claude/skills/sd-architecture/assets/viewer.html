@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --ink: #1d1d1b; --muted: #6b6b66; --line: #d9d9d4;
+    --accent: #2f5fd0; --warn: #b26a00; --bad: #c0392b; --good: #2e7d32;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); }
+  header { padding: 16px 24px 0; background: var(--card); border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0 0 4px; font-size: 20px; }
+  header .desc { color: var(--muted); margin-bottom: 10px; }
+  .stats { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat b { font-size: 18px; display: block; }
+  .stat span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  nav { display: flex; gap: 2px; flex-wrap: wrap; }
+  nav button { border: 0; background: none; padding: 10px 14px; font: inherit; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  nav button.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+  main { padding: 20px 24px 40px; }
+  section { display: none; }
+  section.on { display: block; }
+  .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  select, .toolbar label { font: inherit; }
+  .diagram { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow: auto; min-height: 120px; }
+  .diagram svg { height: auto; }
+  .note { color: var(--muted); margin: 0 0 10px; }
+  .note.err { color: var(--bad); }
+  pre { background: #f0f0ec; padding: 12px; border-radius: 6px; overflow: auto; font-size: 12px; }
+  table { border-collapse: collapse; width: 100%; background: var(--card); margin-top: 16px; border: 1px solid var(--line); }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #efefeb; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; border: 1px solid var(--line); background: #fafaf8; white-space: nowrap; }
+  .pill.given { border-color: #a5d6a7; background: #eef7ee; }
+  .pill.open { border-style: dashed; border-color: #888; }
+  .pill.conflict { border-color: var(--bad); color: var(--bad); }
+  .pill.client { background: #e3f2fd; } .pill.server { background: #fff3e0; } .pill.os { background: #f3e5f5; } .pill.third-party { background: #e0f7fa; } .pill.shared { background: #f1f8e9; }
+  .layout { display: flex; gap: 16px; align-items: flex-start; }
+  .board-wrap { flex: 1; overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+  .board { position: relative; padding: 16px; min-width: max-content; }
+  .cols { display: flex; gap: 56px; position: relative; z-index: 1; }
+  .col { width: 230px; display: flex; flex-direction: column; gap: 10px; }
+  .col h3 { margin: 0 0 2px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .card { border: 1px solid #bdbdb6; border-radius: 6px; padding: 8px 10px; background: #fff; cursor: pointer; transition: opacity .15s; }
+  .card .id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--muted); }
+  .card .t { font-weight: 600; margin: 2px 0; }
+  .card .m { font-size: 12px; color: var(--muted); }
+  .card.crit { box-shadow: inset 4px 0 0 var(--bad); }
+  .card.blocked { border: 2px dashed var(--bad); }
+  .card.ready { outline: 2px solid var(--good); outline-offset: 1px; }
+  .card.sel { outline: 3px solid var(--accent); outline-offset: 1px; }
+  .card.dim { opacity: .25; }
+  .card.st-designed { background: #e3f2fd; } .card.st-proposed { background: #fff8e1; } .card.st-verified { background: #e8f5e9; } .card.st-archived { background: #c8e6c9; }
+  svg.edges { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 0; }
+  svg.edges path { fill: none; stroke: #9a9a94; stroke-width: 1.4; }
+  svg.edges path.hi { stroke: var(--accent); stroke-width: 2.4; }
+  svg.edges path.lo { stroke-opacity: .15; }
+  aside { width: 340px; flex: none; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; }
+  aside h2 { margin: 0 0 4px; font-size: 16px; }
+  aside dl { display: grid; grid-template-columns: 100px 1fr; gap: 4px 10px; margin: 10px 0; }
+  aside dt { color: var(--muted); }
+  aside dd { margin: 0; }
+  aside table { margin-top: 8px; font-size: 12px; }
+  aside code { word-break: break-all; }
+  .zoom { float: right; border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: 2px 8px; font: inherit; font-size: 12px; cursor: pointer; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  .legend i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 4px; border: 1px solid #999; }
+  ul.warn li { margin-bottom: 6px; color: var(--warn); }
+  .chips button { border: 1px solid var(--line); background: #fff; border-radius: 14px; padding: 3px 10px; font: inherit; cursor: pointer; }
+  .chips button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Architecture</h1>
+  <div class="desc" id="desc"></div>
+  <div class="stats" id="stats"></div>
+  <nav id="tabs"></nav>
+</header>
+<main>
+  <section id="tab-context">
+    <p class="note">Level 1: the people and systems around the app. Dashed: open. Red: conflict. Grey: external.</p>
+    <div class="diagram" data-view="l1"></div>
+    <div data-elements="l1"></div>
+  </section>
+  <section id="tab-containers">
+    <div class="toolbar"><label>View <select id="sel-system"></select></label></div>
+    <p class="note">Level 2: what runs code or stores data on its own. Shared KMP code lives inside each app box.</p>
+    <div class="diagram" id="l2-diagram"></div>
+    <div id="l2-elements"></div>
+  </section>
+  <section id="tab-components">
+    <div class="toolbar"><label>Container <select id="sel-container"></select></label></div>
+    <p class="note" id="l3-note">Level 3: the components inside one container. sd-deep-dive adds them change by change.</p>
+    <div class="diagram" id="l3-diagram"></div>
+    <div id="l3-elements"></div>
+  </section>
+  <section id="tab-data">
+    <p class="note">Where each kind of data lives, whether it is plaintext there, and what may cross between zones. Dashed arrow: must never cross.</p>
+    <div class="diagram" data-view="dataflow"></div>
+    <div id="data-tables"></div>
+  </section>
+  <section id="tab-resp">
+    <div class="toolbar chips" id="resp-filter"></div>
+    <div id="resp-table"></div>
+  </section>
+  <section id="tab-chunks">
+    <div class="toolbar">
+      <label><input type="checkbox" id="chunk-crit"> Show critical path</label>
+    </div>
+    <div class="legend" id="chunk-legend"></div>
+    <div class="layout">
+      <div class="board-wrap"><div class="board" id="chunk-board"></div></div>
+      <aside id="chunk-panel"><p class="note">Click a chunk to see what it depends on and what it unlocks.</p></aside>
+    </div>
+  </section>
+  <section id="tab-changes">
+    <div class="toolbar">
+      <label>Chunk <select id="sel-chunk"></select></label>
+      <label><input type="checkbox" id="change-crit"> Show critical path</label>
+      <label><input type="checkbox" id="change-ready"> Highlight ready now</label>
+    </div>
+    <div class="legend">
+      <span><i style="background:#fff"></i>planned</span>
+      <span><i style="background:#e3f2fd"></i>designed</span>
+      <span><i style="background:#fff8e1"></i>proposed</span>
+      <span><i style="background:#e8f5e9"></i>verified</span>
+      <span><i style="background:#c8e6c9"></i>archived</span>
+      <span><i style="border:2px dashed #c0392b;background:#fff"></i>blocked by a conflict</span>
+    </div>
+    <div class="layout">
+      <div class="board-wrap"><div class="board" id="change-board"></div></div>
+      <aside id="change-panel"><p class="note">Click a change to see its dependencies, decision stops and task groups.</p></aside>
+    </div>
+  </section>
+  <section id="tab-warn">
+    <ul class="warn" id="warn-list"></ul>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+const DATA = /*__DATA__*/null;
+
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = (id) => document.getElementById(id);
+const arch = DATA.architecture || {};
+const els = {};
+(arch.elements || []).forEach((e) => (els[e.id] = e));
+
+// ---------------------------------------------------------------- header
+$("title").textContent = (DATA.project && DATA.project.name ? DATA.project.name + ": " : "") + "architecture";
+document.title = $("title").textContent;
+$("desc").textContent = (DATA.project && DATA.project.description) || "";
+const maxWave = (list) => list.reduce((m, x) => Math.max(m, x.wave), 0);
+const openCount = (arch.elements || []).filter((e) => e.status === "open").length;
+const conflictCount = (arch.elements || []).filter((e) => e.status === "conflict").length;
+$("stats").innerHTML = [
+  [(arch.elements || []).filter((e) => e.kind === "container" || e.kind === "store").length, "Containers"],
+  [openCount, "Open elements"],
+  [conflictCount, "Conflicts"],
+  [DATA.chunks.length, "Chunks"],
+  [maxWave(DATA.chunks), "Chunk waves"],
+  [DATA.changes.length, "Changes"],
+  [DATA.changes.filter((c) => c.ready).length, "Ready now"],
+  [DATA.warnings.length, "Warnings"],
+].map(([n, l]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
+
+// ------------------------------------------------------------------ tabs
+const TABS = [
+  ["context", "Context"], ["containers", "Containers"], ["components", "Components"], ["data", "Data flow"],
+  ["resp", "Responsibilities"], ["chunks", "Chunks"], ["changes", "Changes"], ["warn", "Warnings (" + DATA.warnings.length + ")"],
+];
+const onShow = {};
+function show(id) {
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.dataset.tab === id));
+  document.querySelectorAll("main section").forEach((s) => s.classList.toggle("on", s.id === "tab-" + id));
+  if (onShow[id]) onShow[id]();
+  try { history.replaceState(null, "", "#" + id); } catch (e) { /* file:// may refuse */ }
+}
+$("tabs").innerHTML = TABS.map(([id, label]) => `<button data-tab="${id}">${esc(label)}</button>`).join("");
+$("tabs").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) show(b.dataset.tab); });
+
+// --------------------------------------------------------------- mermaid
+const hasMermaid = typeof window.mermaid !== "undefined";
+if (hasMermaid) mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default", flowchart: { htmlLabels: true, curve: "basis" } });
+let renderSeq = 0;
+async function renderDiagram(el, code) {
+  if (el.dataset.code === code) return;
+  el.dataset.code = code;
+  if (!hasMermaid) {
+    el.innerHTML = `<p class="note">Diagrams load Mermaid from a CDN, and it could not be reached. The same diagrams render in ARCHITECTURE.md on GitHub. Source:</p><pre>${esc(code)}</pre>`;
+    return;
+  }
+  try {
+    const { svg } = await mermaid.render("mmd" + ++renderSeq, code);
+    el.innerHTML = '<button class="zoom" type="button">Actual size</button>' + svg;
+    const btn = el.querySelector(".zoom"), s = el.querySelector("svg");
+    const fit = s.style.maxWidth;
+    btn.onclick = () => {
+      const actual = btn.textContent === "Actual size";
+      s.style.maxWidth = actual ? "none" : fit;
+      s.style.width = actual ? fit : "100%";
+      btn.textContent = actual ? "Fit to width" : "Actual size";
+    };
+  } catch (e) {
+    el.innerHTML = `<p class="note err">Mermaid could not render this view: ${esc(e.message || e)}</p><pre>${esc(code)}</pre>`;
+  }
+}
+
+function pill(v) { return v ? `<span class="pill ${esc(v)}">${esc(v)}</span>` : ""; }
+function elementTable(ids) {
+  const rows = ids.map((id) => els[id]).filter(Boolean);
+  if (!rows.length) return "";
+  return `<table><tr><th>Element</th><th>Kind</th><th>Tech</th><th>Status</th><th>Description</th><th>Source</th></tr>${rows.map((e) =>
+    `<tr><td><b>${esc(e.name)}</b><br><code>${esc(e.id)}</code></td><td>${esc(e.kind)}</td><td>${esc(e.tech)}</td><td>${pill(e.status || "given")}</td><td>${esc(e.description)}${e.notes ? "<br><i>" + esc(e.notes) + "</i>" : ""}</td><td>${esc(e.source)}</td></tr>`).join("")}</table>`;
+}
+
+// ------------------------------------------------------- context, L2, L3
+onShow.context = () => {
+  renderDiagram(document.querySelector('[data-view="l1"]'), DATA.views.l1);
+  document.querySelector('[data-elements="l1"]').innerHTML = elementTable(DATA.views.l1Elements);
+};
+const l2 = DATA.views.l2 || [];
+$("sel-system").innerHTML = l2.map((v, i) => `<option value="${i}">${esc((els[v.system] || {}).name || v.system)}${v.platform ? " (" + esc(v.platform) + ")" : ""}</option>`).join("");
+onShow.containers = () => {
+  const v = l2[+$("sel-system").value || 0];
+  if (!v) { $("l2-diagram").innerHTML = '<p class="note">No system has containers yet.</p>'; return; }
+  renderDiagram($("l2-diagram"), v.mermaid);
+  $("l2-elements").innerHTML = elementTable(v.elements);
+};
+$("sel-system").addEventListener("change", onShow.containers);
+const l3 = DATA.views.l3 || [];
+$("sel-container").innerHTML = l3.map((v, i) => `<option value="${i}">${esc((els[v.container] || {}).name || v.container)}</option>`).join("");
+onShow.components = () => {
+  const v = l3[+$("sel-container").value || 0];
+  if (!v) { $("l3-diagram").innerHTML = '<p class="note">No components yet. sd-deep-dive adds them for the containers each change touches.</p>'; $("l3-elements").innerHTML = ""; return; }
+  renderDiagram($("l3-diagram"), v.mermaid);
+  $("l3-elements").innerHTML = elementTable(v.elements);
+};
+$("sel-container").addEventListener("change", onShow.components);
+
+// -------------------------------------------------------------- data flow
+onShow.data = () => {
+  renderDiagram(document.querySelector('[data-view="dataflow"]'), DATA.views.dataflow);
+  const zones = {}; (arch.zones || []).forEach((z) => (zones[z.id] = z.name || z.id));
+  const names = {}; (arch.data || []).forEach((d) => (names[d.id] = d.name || d.id));
+  const yn = (v) => (v === true ? "yes" : v === false ? "no" : "");
+  let html = `<table><tr><th>Data</th><th>Zone</th><th>Plaintext</th><th>Survives process death</th><th>Background access</th><th>Status</th><th>Source</th></tr>`;
+  (arch.data || []).forEach((d) => (d.locations || []).forEach((l) => {
+    html += `<tr><td>${esc(d.name)}</td><td>${esc(zones[l.zone] || l.zone)}</td><td>${yn(l.plaintext)}</td><td>${yn(l.survivesDeath)}</td><td>${yn(l.backgroundAccess)}</td><td>${pill(d.status || "given")}</td><td>${esc(l.notes || d.source)}</td></tr>`;
+  }));
+  html += "</table>";
+  if ((arch.crossings || []).length) {
+    html += `<table><tr><th>From</th><th>To</th><th>Data</th><th>Allowed</th><th>Rule</th><th>Status</th><th>Source</th></tr>${arch.crossings.map((c) =>
+      `<tr><td>${esc(zones[c.from] || c.from)}</td><td>${esc(zones[c.to] || c.to)}</td><td>${esc((c.data || []).map((x) => names[x] || x).join(", "))}</td><td>${c.allowed ? "yes" : "<b>never</b>"}</td><td>${esc(c.rule)}</td><td>${pill(c.status || "given")}</td><td>${esc(c.source)}</td></tr>`).join("")}</table>`;
+  }
+  $("data-tables").innerHTML = html;
+};
+
+// ------------------------------------------------------- responsibilities
+let respOwner = "all";
+onShow.resp = () => {
+  const list = arch.responsibilities || [];
+  const owners = ["all", ...new Set(list.map((r) => r.owner))];
+  $("resp-filter").innerHTML = owners.map((o) => `<button data-o="${esc(o)}" class="${o === respOwner ? "on" : ""}">${esc(o)}</button>`).join("");
+  const rows = list.filter((r) => respOwner === "all" || r.owner === respOwner);
+  $("resp-table").innerHTML = rows.length
+    ? `<table><tr><th>Concern</th><th>Owner</th><th>Status</th><th>Source</th><th>Notes</th></tr>${rows.map((r) =>
+        `<tr><td>${esc(r.concern)}</td><td>${pill(r.owner)}</td><td>${pill(r.status || "given")}</td><td>${esc(r.source)}</td><td>${esc(r.notes)}</td></tr>`).join("")}</table>`
+    : '<p class="note">No responsibilities recorded yet.</p>';
+};
+$("resp-filter").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) { respOwner = b.dataset.o; onShow.resp(); } });
+
+// ------------------------------------------------------------------ boards
+const AREA_COLORS = ["#e3f2fd", "#e8f5e9", "#fff3e0", "#f3e5f5", "#e0f7fa", "#fce4ec", "#f1f8e9", "#ede7f6", "#fffde7"];
+const areaIndex = {}; (DATA.areas || []).forEach((a, i) => (areaIndex[a.id] = i));
+
+function makeBoard(root, items, opts) {
+  // items: {id, wave, deps, group, title, meta, classes, style}
+  const byId = {}; items.forEach((it) => (byId[it.id] = it));
+  const waves = [...new Set(items.map((i) => i.wave))].sort((a, b) => a - b);
+  const pos = {};
+  const columns = waves.map((w) => items.filter((i) => i.wave === w));
+  columns.forEach((col, ci) => {
+    col.forEach((it) => {
+      const ds = it.deps.filter((d) => pos[d] !== undefined);
+      it._bary = ds.length ? ds.reduce((s, d) => s + pos[d], 0) / ds.length : -1;
+    });
+    col.sort((a, b) => (ci === 0 ? (a.group + a.id).localeCompare(b.group + b.id) : a._bary - b._bary || a.id.localeCompare(b.id)));
+    col.forEach((it, i) => (pos[it.id] = i));
+  });
+  root.innerHTML = `<svg class="edges"></svg><div class="cols">${columns.map((col, ci) =>
+    `<div class="col"><h3>Wave ${waves[ci]}${col.length > 1 ? " · " + col.length + " in parallel" : ""}</h3>${col.map((it) =>
+      `<div class="card ${it.classes || ""}" data-id="${esc(it.id)}" style="${it.style || ""}"><div class="id">${esc(it.id)}</div><div class="t">${esc(it.title)}</div><div class="m">${it.meta || ""}</div></div>`).join("")}</div>`).join("")}</div>`;
+  const svg = root.querySelector("svg");
+  const edges = [];
+  items.forEach((it) => it.deps.forEach((d) => { if (byId[d]) edges.push([d, it.id]); }));
+  function draw() {
+    const box = root.getBoundingClientRect();
+    svg.setAttribute("width", root.scrollWidth);
+    svg.setAttribute("height", root.scrollHeight);
+    const card = (id) => root.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
+    svg.innerHTML = edges.map(([a, b]) => {
+      const ea = card(a), eb = card(b);
+      if (!ea || !eb) return "";
+      const ra = ea.getBoundingClientRect(), rb = eb.getBoundingClientRect();
+      const x1 = ra.right - box.left, y1 = ra.top + ra.height / 2 - box.top;
+      const x2 = rb.left - box.left, y2 = rb.top + rb.height / 2 - box.top;
+      const dx = Math.max(24, (x2 - x1) / 2);
+      return `<path data-a="${esc(a)}" data-b="${esc(b)}" d="M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}"/>`;
+    }).join("");
+  }
+  function select(id) {
+    const up = new Set(byId[id] ? byId[id].deps : []);
+    const down = new Set(items.filter((i) => i.deps.includes(id)).map((i) => i.id));
+    root.querySelectorAll(".card").forEach((c) => {
+      const cid = c.dataset.id;
+      c.classList.toggle("sel", cid === id);
+      c.classList.toggle("dim", !!id && cid !== id && !up.has(cid) && !down.has(cid));
+    });
+    svg.querySelectorAll("path").forEach((p) => {
+      const on = id && (p.dataset.a === id || p.dataset.b === id);
+      p.classList.toggle("hi", !!on);
+      p.classList.toggle("lo", !!id && !on);
+    });
+    if (opts.onSelect) opts.onSelect(id ? byId[id] : null);
+  }
+  root.onclick = (ev) => {
+    const c = ev.target.closest(".card");
+    const id = c ? c.dataset.id : null;
+    select(c && !c.classList.contains("sel") ? id : null);
+  };
+  requestAnimationFrame(draw);
+  return { draw };
+}
+
+function dl(rows) {
+  return "<dl>" + rows.filter(([, v]) => v !== undefined && v !== "" && v !== null).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("") + "</dl>";
+}
+const codes = (list) => (list && list.length ? list.map((x) => `<code>${esc(x)}</code>`).join(", ") : "");
+
+// ------------------------------------------------------------------ chunks
+const chunkById = {}; DATA.chunks.forEach((c) => (chunkById[c.id] = c));
+$("chunk-legend").innerHTML = (DATA.areas || []).map((a, i) => `<span><i style="background:${AREA_COLORS[i % AREA_COLORS.length]}"></i>${esc(a.name || a.id)}</span>`).join("") +
+  '<span><i style="background:#fff;box-shadow:inset 4px 0 0 #c0392b"></i>critical path</span>';
+let chunkBoard = null;
+function chunkPanel(c) {
+  if (!c) { $("chunk-panel").innerHTML = '<p class="note">Click a chunk to see what it depends on and what it unlocks.</p>'; return; }
+  const raw = chunkById[c.id];
+  $("chunk-panel").innerHTML = `<div class="id"><code>${esc(raw.id)}</code></div><h2>${esc(raw.title)}</h2>${esc(raw.summary)}` + dl([
+    ["Area", esc(raw.area)], ["Kind", esc(raw.kind)], ["Size", esc(raw.size)], ["Wave", raw.wave],
+    ["Depends on", codes(raw.dependsOn) || "nothing"], ["Unlocks", codes(raw.unlocks) || "nothing"],
+    ["Containers", codes(raw.containers)], ["Requirements", codes(raw.requirements)],
+    ["Changes", raw.changes.length ? codes(raw.changes) : "not sliced yet: run sd-slice " + esc(raw.id)],
+    ["Critical", raw.critical ? "yes" : "no"],
+  ]);
+}
+function drawChunks() {
+  const crit = $("chunk-crit").checked;
+  chunkBoard = makeBoard($("chunk-board"), DATA.chunks.map((c) => ({
+    id: c.id, wave: c.wave, deps: c.dependsOn || [], group: String(areaIndex[c.area]).padStart(3, "0"),
+    title: c.title, meta: `${esc(c.area)} · ${esc(c.size)} · ${c.changes.length ? c.changes.length + " changes" : "not sliced"}`,
+    classes: crit && c.critical ? "crit" : "",
+    style: `background:${AREA_COLORS[(areaIndex[c.area] || 0) % AREA_COLORS.length]}`,
+  })), { onSelect: chunkPanel });
+}
+onShow.chunks = drawChunks;
+$("chunk-crit").addEventListener("change", drawChunks);
+
+// ----------------------------------------------------------------- changes
+const changeById = {}; DATA.changes.forEach((c) => (changeById[c.id] = c));
+$("sel-chunk").innerHTML = '<option value="">All chunks</option>' + DATA.chunks.filter((c) => c.changes.length).map((c) => `<option value="${esc(c.id)}">${esc(c.id)}</option>`).join("");
+function changePanel(c) {
+  if (!c) { $("change-panel").innerHTML = '<p class="note">Click a change to see its dependencies, decision stops and task groups.</p>'; return; }
+  const raw = changeById[c.id];
+  const groups = raw.taskGroups || [];
+  const next = raw.ready ? "ready: run sd-deep-dive " + esc(raw.id) : "";
+  $("change-panel").innerHTML = `<div class="id"><code>${esc(raw.id)}</code></div><h2>${esc(raw.title)}</h2>` + dl([
+    ["Chunk", `<code>${esc(raw.chunk)}</code>`], ["Kind", esc(raw.kind)], ["Status", esc(raw.status)], ["Size", esc(raw.size)], ["Wave", raw.wave],
+    ["Depends on", codes(raw.dependsOn) || "nothing"], ["Unlocks", codes(raw.unlocks) || "nothing"], ["Used by", codes(raw.usedBy)],
+    ["Decision stop", codes(raw.stops) || "none"], ["Blocked by", raw.blockedBy.length ? `<span style="color:var(--bad)">${codes(raw.blockedBy)}</span>` : "nothing"],
+    ["Requirements", codes(raw.requirements)], ["Scenarios", raw.scenarios], ["Next", next],
+  ]) + (groups.length ? `<table><tr><th>Task group</th><th>After</th><th>Lines</th></tr>${groups.map((g) =>
+    `<tr><td><b>${esc(g.name)}</b><br>${(g.paths || []).map((p) => `<code>${esc(p)}</code>`).join("<br>")}</td><td>${esc((g.after || []).join(", "))}</td><td>${g.estimateLines || ""}</td></tr>`).join("")}</table>` : "");
+}
+function drawChanges() {
+  const crit = $("change-crit").checked, ready = $("change-ready").checked, only = $("sel-chunk").value;
+  const list = DATA.changes.filter((c) => !only || c.chunk === only);
+  if (!list.length) { $("change-board").innerHTML = '<p class="note">No changes yet. Run sd-slice on a chunk.</p>'; changePanel(null); return; }
+  makeBoard($("change-board"), list.map((c) => ({
+    id: c.id, wave: c.wave, deps: c.dependsOn || [], group: c.chunk, title: c.title,
+    meta: [esc(c.status), c.stops.length ? "stop " + esc(c.stops.join(", ")) : "", c.blockedBy.length ? "blocked by " + esc(c.blockedBy.join(", ")) : ""].filter(Boolean).join(" · "),
+    classes: ["st-" + c.status, crit && c.critical ? "crit" : "", c.blockedBy.length ? "blocked" : "", ready && c.ready ? "ready" : ""].join(" "),
+  })), { onSelect: changePanel });
+}
+onShow.changes = drawChanges;
+["change-crit", "change-ready", "sel-chunk"].forEach((id) => $(id).addEventListener("change", drawChanges));
+
+// ---------------------------------------------------------------- warnings
+$("warn-list").innerHTML = DATA.warnings.length ? DATA.warnings.map((w) => `<li>${esc(w)}</li>`).join("") : '<li style="color:var(--good)">No warnings.</li>';
+
+window.addEventListener("resize", () => { const s = document.querySelector("main section.on"); if (s && (s.id === "tab-chunks" || s.id === "tab-changes")) onShow[s.id.slice(4)](); });
+window.addEventListener("hashchange", () => { const h = (location.hash || "").slice(1); if (TABS.some(([id]) => id === h)) show(h); });
+const start = (location.hash || "").slice(1);
+show(TABS.some(([id]) => id === start) ? start : "context");
+</script>
+</body>
+</html>

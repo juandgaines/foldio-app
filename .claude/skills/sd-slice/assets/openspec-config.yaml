@@ -1,0 +1,28 @@
+# Merge these two keys into openspec/config.yaml.
+# Keep the schema line and anything else already there.
+# Check the artifact ids of your schema with: openspec schemas --json
+
+context: |
+  System design lives in docs/architecture/. Read it before writing any artifact:
+  - REQUIREMENTS.md (R ids), API.md, ARCHITECTURE.md, DECISIONS.md (D ids), QUESTIONS.md (Q ids)
+  - docs/architecture/changes/<change-id>.md is the deep dive for this change. Use it as the source for every artifact.
+  - ADRs live in docs/adr/.
+  Given facts are fixed. Never re-decide them. Never make a new decision in an artifact: point to the deep dive or its ADR.
+
+rules:
+  proposal: |
+    Name the chunk and the change id (cNN-MM-name).
+    List the R ids this change covers.
+    List the decision stops (D ids) it touches, at most one, each with its ADR.
+    List the Q ids that block it, if any.
+  specs: |
+    One capability per change.
+    2 to 6 scenarios. Each scenario names the R id it covers.
+  design: |
+    Link every ADR this change follows.
+    Copy the edge cases from the deep dive and say where each one is handled.
+  tasks: |
+    Group tasks in this order: Domain, then Data (one group per data source), then Presentation (one group per screen).
+    Split platform-heavy groups into Android and iOS.
+    Each group is one PR under 400 changed lines.
+    For each group, list the paths it may touch.

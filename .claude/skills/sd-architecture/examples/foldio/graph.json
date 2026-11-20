@@ -1,0 +1,185 @@
+{
+  "project": { "name": "Foldio" },
+  "areas": [
+    { "id": "foundation", "name": "Foundations" },
+    { "id": "auth", "name": "Auth and session" },
+    { "id": "files", "name": "Files" },
+    { "id": "transfer", "name": "Transfers" },
+    { "id": "offline", "name": "Offline" },
+    { "id": "editing", "name": "Editing and versions" },
+    { "id": "settings", "name": "Settings" }
+  ],
+  "chunks": [
+    { "id": "c01-scaffold", "title": "Scaffold and CI", "area": "foundation", "kind": "foundation", "size": "M",
+      "dependsOn": [], "containers": ["android", "ios"], "requirements": [],
+      "summary": "KMP project, modules, CI with Prism, detekt and Konsist" },
+    { "id": "c02-design-system", "title": "Design system", "area": "foundation", "kind": "foundation", "size": "M",
+      "dependsOn": ["c01-scaffold"], "containers": ["android", "ios"], "requirements": ["R2"],
+      "summary": "Material 3 theme, semantic color tokens, shared components" },
+    { "id": "c03-crypto-core", "title": "Crypto core", "area": "foundation", "kind": "foundation", "size": "M",
+      "dependsOn": ["c01-scaffold"], "containers": ["android", "ios"], "requirements": ["R40", "R41", "R42"],
+      "summary": "Argon2id, AES-256-GCM chunks, key wrapping, shared test vectors" },
+    { "id": "c04-local-db", "title": "Local database", "area": "foundation", "kind": "foundation", "size": "S",
+      "dependsOn": ["c01-scaffold"], "containers": ["local-db"], "requirements": ["R43"],
+      "summary": "SQLCipher database and its key" },
+    { "id": "c05-network-client", "title": "Network client", "area": "foundation", "kind": "foundation", "size": "M",
+      "dependsOn": ["c01-scaffold"], "containers": ["android", "ios"], "requirements": [],
+      "summary": "HTTP client, API key header, error model, SSE client" },
+    { "id": "c06-storage-layout", "title": "Storage layout", "area": "foundation", "kind": "foundation", "size": "S",
+      "dependsOn": ["c01-scaffold"], "containers": ["file-store"], "requirements": ["R30"],
+      "summary": "File store areas, their directories and owners" },
+    { "id": "c07-auth-session", "title": "Auth and session", "area": "auth", "kind": "capability", "size": "L",
+      "dependsOn": ["c02-design-system", "c03-crypto-core", "c04-local-db", "c05-network-client"],
+      "containers": ["android", "ios", "secure-storage"], "requirements": ["R3", "R4", "R5", "R6", "R7"],
+      "summary": "Register, verify email, sign in, unlock, lock, sign out" },
+    { "id": "c08-browsing", "title": "Browsing", "area": "files", "kind": "capability", "size": "L",
+      "dependsOn": ["c07-auth-session", "c04-local-db"], "containers": ["android", "ios", "local-db"], "requirements": ["R10", "R11", "R12"],
+      "summary": "Home, file list, search, recents, rendered from the local database" },
+    { "id": "c09-live-sync", "title": "Live sync", "area": "files", "kind": "capability", "size": "M",
+      "dependsOn": ["c07-auth-session", "c04-local-db"], "containers": ["android", "ios", "local-db"], "requirements": ["R50"],
+      "summary": "SSE events applied to the local database, replay and full resync" },
+    { "id": "c10-upload", "title": "Upload", "area": "transfer", "kind": "capability", "size": "L",
+      "dependsOn": ["c03-crypto-core", "c06-storage-layout", "c08-browsing"],
+      "containers": ["android", "ios", "android-runner", "ios-runner", "file-store"], "requirements": ["R20", "R21", "R22"],
+      "summary": "Chunked, resumable upload that survives a kill and a reboot" },
+    { "id": "c11-download-open", "title": "Download and open", "area": "transfer", "kind": "capability", "size": "L",
+      "dependsOn": ["c03-crypto-core", "c06-storage-layout", "c08-browsing"],
+      "containers": ["android", "ios", "file-store", "android-bridge", "ios-bridge"], "requirements": ["R23", "R24"],
+      "summary": "Download ciphertext, decrypt in memory, open in other apps" },
+    { "id": "c12-file-operations", "title": "File operations", "area": "files", "kind": "capability", "size": "M",
+      "dependsOn": ["c08-browsing", "c09-live-sync"], "containers": ["android", "ios"], "requirements": ["R13", "R14"],
+      "summary": "Create folder, rename, move, copy, delete, batch operations" },
+    { "id": "c13-offline-pinned", "title": "Offline and pinned", "area": "offline", "kind": "capability", "size": "M",
+      "dependsOn": ["c11-download-open", "c09-live-sync"], "containers": ["file-store"], "requirements": ["R31", "R32"],
+      "summary": "Available offline, pinned refresh, Clear cache" },
+    { "id": "c14-versions-restore", "title": "Versions and restore", "area": "editing", "kind": "capability", "size": "M",
+      "dependsOn": ["c11-download-open", "c10-upload"], "containers": ["android", "ios"], "requirements": ["R25"],
+      "summary": "Version history, view, restore, delete old versions" },
+    { "id": "c15-edit-write-back", "title": "Edit and write-back", "area": "editing", "kind": "capability", "size": "L",
+      "dependsOn": ["c10-upload", "c11-download-open"], "containers": ["android-bridge", "file-store"], "requirements": ["R26"],
+      "summary": "Edit in another app, save back as a new version" },
+    { "id": "c16-conflicts", "title": "Conflicts", "area": "editing", "kind": "capability", "size": "M",
+      "dependsOn": ["c10-upload", "c15-edit-write-back"], "containers": ["android", "ios"], "requirements": ["R27"],
+      "summary": "Keep Mine, Keep Both, Use Server, deleted elsewhere" },
+    { "id": "c17-settings-account", "title": "Settings and account", "area": "settings", "kind": "capability", "size": "M",
+      "dependsOn": ["c07-auth-session", "c13-offline-pinned"], "containers": ["android", "ios"], "requirements": ["R60", "R61"],
+      "summary": "Auto-lock, Wi-Fi only, storage, password change" }
+  ],
+  "changes": [
+    { "id": "c01-01-project-scaffold", "chunk": "c01-scaffold", "title": "KMP project with CI", "kind": "foundation", "size": "M",
+      "dependsOn": [], "usedBy": ["c03-01-crypto-library"], "stops": [], "blockedBy": [], "status": "verified", "scenarios": 2,
+      "requirements": [],
+      "taskGroups": [
+        { "name": "Build setup", "paths": ["settings.gradle.kts", "build.gradle.kts", "gradle/"], "after": [], "estimateLines": 220 },
+        { "name": "CI", "paths": [".github/workflows/"], "after": ["Build setup"], "estimateLines": 120 },
+        { "name": "Konsist and detekt", "paths": ["konsist/", "config/detekt/"], "after": ["Build setup"], "estimateLines": 180 }
+      ] },
+    { "id": "c03-01-crypto-library", "chunk": "c03-crypto-core", "title": "Crypto library and test vectors", "kind": "foundation", "size": "S",
+      "dependsOn": ["c01-01-project-scaffold"], "usedBy": ["c03-02-key-derivation"], "stops": ["D1"], "blockedBy": [], "status": "designed",
+      "scenarios": 2, "requirements": ["R40"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/crypto/", "shared/src/commonTest/"], "after": [], "estimateLines": 200 },
+        { "name": "Android", "paths": ["shared/src/androidMain/kotlin/crypto/"], "after": ["Domain"], "estimateLines": 150 },
+        { "name": "iOS", "paths": ["shared/src/iosMain/kotlin/crypto/"], "after": ["Domain"], "estimateLines": 150 }
+      ] },
+    { "id": "c03-02-key-derivation", "chunk": "c03-crypto-core", "title": "authKey and KEK from a password", "kind": "foundation", "size": "S",
+      "dependsOn": ["c03-01-crypto-library"], "usedBy": ["c07-02-login"], "stops": ["D2"], "blockedBy": [], "status": "planned",
+      "scenarios": 3, "requirements": ["R40"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/crypto/kdf/", "shared/src/commonTest/"], "after": [], "estimateLines": 250 },
+        { "name": "Android", "paths": ["shared/src/androidMain/kotlin/crypto/kdf/"], "after": ["Domain"], "estimateLines": 120 },
+        { "name": "iOS", "paths": ["shared/src/iosMain/kotlin/crypto/kdf/"], "after": ["Domain"], "estimateLines": 120 }
+      ] },
+    { "id": "c03-03-chunk-cipher", "chunk": "c03-crypto-core", "title": "Encrypt and decrypt 5 MB chunks", "kind": "foundation", "size": "M",
+      "dependsOn": ["c03-01-crypto-library"], "usedBy": ["c10-01-upload-foreground"], "stops": ["D3"], "blockedBy": ["Q3"], "status": "planned",
+      "scenarios": 4, "requirements": ["R41"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/crypto/chunk/", "shared/src/commonTest/"], "after": [], "estimateLines": 300 },
+        { "name": "Android", "paths": ["shared/src/androidMain/kotlin/crypto/chunk/"], "after": ["Domain"], "estimateLines": 120 },
+        { "name": "iOS", "paths": ["shared/src/iosMain/kotlin/crypto/chunk/"], "after": ["Domain"], "estimateLines": 120 }
+      ] },
+    { "id": "c03-04-key-wrapping", "chunk": "c03-crypto-core", "title": "Wrap and unwrap the master key and DEKs", "kind": "foundation", "size": "S",
+      "dependsOn": ["c03-01-crypto-library"], "usedBy": ["c07-01-register"], "stops": [], "blockedBy": [], "status": "planned",
+      "scenarios": 3, "requirements": ["R42"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/crypto/wrap/", "shared/src/commonTest/"], "after": [], "estimateLines": 220 },
+        { "name": "Platform actuals", "paths": ["shared/src/androidMain/kotlin/crypto/wrap/", "shared/src/iosMain/kotlin/crypto/wrap/"], "after": ["Domain"], "estimateLines": 180 }
+      ] },
+    { "id": "c07-01-register", "chunk": "c07-auth-session", "title": "Create an account and verify the email", "kind": "vertical", "size": "M",
+      "dependsOn": ["c03-02-key-derivation", "c03-04-key-wrapping"], "stops": [], "blockedBy": [], "status": "planned",
+      "scenarios": 4, "requirements": ["R3", "R4"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/auth/domain/"], "after": [], "estimateLines": 250 },
+        { "name": "Data: auth API", "paths": ["shared/src/commonMain/kotlin/auth/data/remote/"], "after": ["Domain"], "estimateLines": 250 },
+        { "name": "Presentation: Create account", "paths": ["composeApp/src/commonMain/kotlin/auth/register/"], "after": ["Domain"], "estimateLines": 350 },
+        { "name": "Presentation: Verify email", "paths": ["composeApp/src/commonMain/kotlin/auth/verify/"], "after": ["Domain"], "estimateLines": 250 }
+      ] },
+    { "id": "c07-02-login", "chunk": "c07-auth-session", "title": "Sign in and keep the session", "kind": "vertical", "size": "M",
+      "dependsOn": ["c07-01-register"], "stops": ["D5"], "blockedBy": [], "status": "planned",
+      "scenarios": 5, "requirements": ["R5"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/auth/domain/"], "after": [], "estimateLines": 200 },
+        { "name": "Data: auth API", "paths": ["shared/src/commonMain/kotlin/auth/data/remote/"], "after": ["Domain"], "estimateLines": 250 },
+        { "name": "Data: token store", "paths": ["shared/src/commonMain/kotlin/auth/data/tokens/"], "after": ["Domain"], "estimateLines": 250 },
+        { "name": "Presentation: Sign in", "paths": ["composeApp/src/commonMain/kotlin/auth/signin/"], "after": ["Domain"], "estimateLines": 300 }
+      ] },
+    { "id": "c07-03-unlock-and-lock", "chunk": "c07-auth-session", "title": "Unlock with password or biometrics, auto-lock", "kind": "vertical", "size": "M",
+      "dependsOn": ["c07-02-login"], "stops": ["D6"], "blockedBy": ["Q5"], "status": "planned",
+      "scenarios": 5, "requirements": ["R6"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/auth/lock/"], "after": [], "estimateLines": 250 },
+        { "name": "Android: biometric key", "paths": ["shared/src/androidMain/kotlin/auth/lock/"], "after": ["Domain"], "estimateLines": 200 },
+        { "name": "iOS: biometric key", "paths": ["shared/src/iosMain/kotlin/auth/lock/"], "after": ["Domain"], "estimateLines": 200 },
+        { "name": "Presentation: Unlock", "paths": ["composeApp/src/commonMain/kotlin/auth/unlock/"], "after": ["Domain"], "estimateLines": 300 }
+      ] },
+    { "id": "c07-04-sign-out", "chunk": "c07-auth-session", "title": "Sign out, online or offline", "kind": "vertical", "size": "S",
+      "dependsOn": ["c07-02-login"], "stops": ["D7"], "blockedBy": ["Q4"], "status": "planned",
+      "scenarios": 3, "requirements": ["R7"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/auth/signout/"], "after": [], "estimateLines": 150 },
+        { "name": "Data: wipe local data", "paths": ["shared/src/commonMain/kotlin/auth/data/"], "after": ["Domain"], "estimateLines": 200 },
+        { "name": "Presentation: Sign out dialog", "paths": ["composeApp/src/commonMain/kotlin/settings/signout/"], "after": ["Domain"], "estimateLines": 120 }
+      ] },
+    { "id": "c10-01-upload-foreground", "chunk": "c10-upload", "title": "Upload one file while the app is open", "kind": "vertical", "size": "M",
+      "dependsOn": ["c03-03-chunk-cipher", "c07-02-login"], "stops": ["D8"], "blockedBy": [], "status": "planned",
+      "scenarios": 4, "requirements": ["R20"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/upload/domain/"], "after": [], "estimateLines": 250 },
+        { "name": "Data: staging store", "paths": ["shared/src/commonMain/kotlin/upload/data/staging/"], "after": ["Domain"], "estimateLines": 300 },
+        { "name": "Data: upload API", "paths": ["shared/src/commonMain/kotlin/upload/data/remote/"], "after": ["Domain"], "estimateLines": 300 },
+        { "name": "Presentation: picker and snackbar", "paths": ["composeApp/src/commonMain/kotlin/files/upload/"], "after": ["Domain"], "estimateLines": 250 }
+      ] },
+    { "id": "c10-02-upload-resume", "chunk": "c10-upload", "title": "The upload survives a kill and a reboot", "kind": "vertical", "size": "M",
+      "dependsOn": ["c10-01-upload-foreground"], "stops": ["D9"], "blockedBy": [], "status": "planned",
+      "scenarios": 4, "requirements": ["R21"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/upload/domain/"], "after": [], "estimateLines": 150 },
+        { "name": "Android: worker", "paths": ["composeApp/src/androidMain/kotlin/upload/worker/"], "after": ["Domain"], "estimateLines": 300 },
+        { "name": "iOS: background transfer", "paths": ["iosApp/Upload/"], "after": ["Domain"], "estimateLines": 300 }
+      ] },
+    { "id": "c10-03-batch-upload", "chunk": "c10-upload", "title": "Upload up to 50 files with a progress sheet", "kind": "vertical", "size": "S",
+      "dependsOn": ["c10-01-upload-foreground"], "stops": [], "blockedBy": [], "status": "planned",
+      "scenarios": 3, "requirements": ["R22"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/upload/domain/"], "after": [], "estimateLines": 200 },
+        { "name": "Data: upload queue", "paths": ["shared/src/commonMain/kotlin/upload/data/queue/"], "after": ["Domain"], "estimateLines": 250 },
+        { "name": "Presentation: progress sheet", "paths": ["composeApp/src/commonMain/kotlin/files/upload/batch/"], "after": ["Domain"], "estimateLines": 300 }
+      ] },
+    { "id": "c10-04-promote-after-complete", "chunk": "c10-upload", "title": "Staged bytes become the cached copy", "kind": "vertical", "size": "S",
+      "dependsOn": ["c10-01-upload-foreground"], "stops": ["D10"], "blockedBy": [], "status": "planned",
+      "scenarios": 3, "requirements": ["R20", "R30"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/storage/promotion/"], "after": [], "estimateLines": 150 },
+        { "name": "Data: promotion owner", "paths": ["shared/src/commonMain/kotlin/storage/data/"], "after": ["Domain"], "estimateLines": 250 },
+        { "name": "Data: startup repair", "paths": ["shared/src/commonMain/kotlin/storage/repair/"], "after": ["Data: promotion owner"], "estimateLines": 200 }
+      ] },
+    { "id": "c10-05-quota-and-collisions", "chunk": "c10-upload", "title": "Quota block and name collision dialog", "kind": "vertical", "size": "S",
+      "dependsOn": ["c10-01-upload-foreground"], "stops": [], "blockedBy": [], "status": "planned",
+      "scenarios": 4, "requirements": ["R22", "R13"],
+      "taskGroups": [
+        { "name": "Domain", "paths": ["shared/src/commonMain/kotlin/upload/domain/"], "after": [], "estimateLines": 150 },
+        { "name": "Data: error mapping", "paths": ["shared/src/commonMain/kotlin/upload/data/remote/"], "after": ["Domain"], "estimateLines": 150 },
+        { "name": "Presentation: collision dialog", "paths": ["composeApp/src/commonMain/kotlin/files/collision/"], "after": ["Domain"], "estimateLines": 250 }
+      ] }
+  ]
+}
